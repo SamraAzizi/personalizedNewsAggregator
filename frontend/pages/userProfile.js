@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import ArticleList from './ArticleList';
+import ArticleList from '../components/ArticleList';
 
 function UserProfile() {
   const [user, setUser] = useState(null);

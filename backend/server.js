@@ -68,25 +68,33 @@ const NotificationSchema = new mongoose.Schema({
   timestamp: { type: Date, default: Date.now }
 });
 
+const RecommendationEventSchema = new mongoose.Schema({
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  group: { type: String, required: true },
+  recommendations: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Article' }],
+  timestamp: { type: Date, default: Date.now }
+});
+
 const User = mongoose.model('User', UserSchema);
 const UserPreference = mongoose.model('UserPreference', UserPreferenceSchema);
 const Article = mongoose.model('Article', ArticleSchema);
 const Interaction = mongoose.model('Interaction', InteractionSchema);
 const Notification = mongoose.model('Notification', NotificationSchema);
+const RecommendationEvent = mongoose.model('RecommendationEvent', RecommendationEventSchema);
 
 // Middleware
 const authenticateJWT = (req, res, next) => {
-  const token = req.header('Authorization');
-  if (!token) return res.status(401).json({ message: 'Authentication required' });
-  
-  try {
-    const decoded = jwt.verify(token, SECRET_KEY);
-    req.userId = decoded.userId;
-    next();
-  } catch (error) {
-    res.status(401).json({ message: 'Invalid token' });
-  }
-};
+    const token = req.header('Authorization');
+    if (!token) return res.status(401).json({ message: 'Authentication required' });
+    
+    try {
+      const decoded = jwt.verify(token, SECRET_KEY);
+      req.userId = decoded.userId;
+      next();
+    } catch (error) {
+      res.status(401).json({ message: 'Invalid token' });
+    }
+  };
 
 // Routes
 app.post('/api/signup', async (req, res) => {
@@ -213,66 +221,26 @@ app.post('/api/interaction', authenticateJWT, async (req, res) => {
   }
 });
 
-app.get('/api/recommendations/collaborative', authenticateJWT, async (req, res) => {
+app.get('/api/recommendations', authenticateJWT, async (req, res) => {
   try {
-    const similarUsers = await getSimilarUsers(req.userId);
-    const user = await User.findById(req.userId).populate('interactions');
+    const user = await User.findById(req.userId);
     
-    const recommendedArticles = [];
-    for (const similarUser of similarUsers) {
-      const userInteractions = await Interaction.find({ user: similarUser.user._id, liked: true })
-        .populate('article')
-        .sort({ timestamp: -1 })
-        .limit(5);
-      
-      for (const interaction of userInteractions) {
-        const alreadyInteracted = user.interactions.some(
-          userInteraction => userInteraction.article.toString() === interaction.article._id.toString()
-        );
-        if (!alreadyInteracted) {
-          recommendedArticles.push(interaction.article);
-        }
-      }
+    // Assign user to group A or B based on user ID
+    const group = user._id.toString().charAt(0) < '8' ? 'A' : 'B';
+    
+    let recommendations;
+    if (group === 'A') {
+      recommendations = await generateRecommendationsA(user);
+    } else {
+      recommendations = await generateRecommendationsB(user);
     }
     
-    const uniqueRecommendations = Array.from(new Set(recommendedArticles.map(a => a._id.toString())))
-      .map(_id => recommendedArticles.find(a => a._id.toString() === _id))
-      .slice(0, 10);
+    // Log the recommendation event for analysis
+    await logRecommendationEvent(user._id, group, recommendations.map(r => r._id));
     
-    res.json(uniqueRecommendations);
+    res.json(recommendations);
   } catch (error) {
-    res.status(500).json({ message: 'Error getting recommendations' });
-  }
-});
-
-app.get('/api/recommendations/content-based', authenticateJWT, async (req, res) => {
-  try {
-    const user = await User.findById(req.userId).populate('interactions');
-    const userInteractions = await Interaction.find({ user: req.userId, liked: true }).populate('article');
-    
-    if (userInteractions.length === 0) return res.json([]);
-    
-    const allArticles = await Article.find({});
-    const allArticleTexts = allArticles.map(article => `${article.title} ${article.description}`);
-    
-    const userLikedArticles = userInteractions.map(interaction => interaction.article);
-    const userLikedTexts = userLikedArticles.map(article => `${article.title} ${article.description}`);
-    
-    const userProfile = calculateTfIdfVector(userLikedTexts.join(' '), allArticleTexts);
-    
-    const articleScores = allArticles.map(article => {
-      const articleVector = calculateTfIdfVector(`${article.title} ${article.description}`, allArticleTexts);
-      const similarity = cosineSimilarity(userProfile, articleVector);
-      return { article, similarity };
-    });
-    
-    const sortedRecommendations = articleScores
-      .sort((a, b) => b.similarity - a.similarity)
-      .filter(item => !userLikedArticles.some(likedArticle => likedArticle._id.toString() === item.article._id.toString()))
-      .slice(0, 10);
-    
-    res.json(sortedRecommendations.map(item => item.article));
-  } catch (error) {
+    console.error('Error getting recommendations:', error);
     res.status(500).json({ message: 'Error getting recommendations' });
   }
 });
@@ -292,6 +260,52 @@ app.post('/api/notifications/read', authenticateJWT, async (req, res) => {
     res.json({ message: 'Notifications marked as read' });
   } catch (error) {
     res.status(500).json({ message: 'Error updating notifications' });
+  }
+});
+
+app.get('/api/evaluate-model', authenticateJWT, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).populate('interactions');
+    const userInteractions = await Interaction.find({ user: req.userId }).populate('article');
+    
+    // Split interactions into training and test sets
+    const splitIndex = Math.floor(userInteractions.length * 0.8);
+    const trainingSet = userInteractions.slice(0, splitIndex);
+    const testSet = userInteractions.slice(splitIndex);
+    
+    // Generate recommendations based on training set
+    const recommendations = await generateRecommendations(user, trainingSet);
+    
+    // Calculate precision and recall
+    const relevantRecommendations = recommendations.filter(rec => 
+      testSet.some(interaction => interaction.article._id.toString() === rec._id.toString() && interaction.liked)
+    );
+    
+    const precision = relevantRecommendations.length / recommendations.length;
+    const recall = relevantRecommendations.length / testSet.filter(interaction => interaction.liked).length;
+    
+    res.json({ precision, recall });
+  } catch (error) {
+    console.error('Error evaluating model:', error);
+    res.status(500).json({ message: 'Error evaluating model' });
+  }
+});
+
+app.get('/api/ab-test-results', authenticateJWT, async (req, res) => {
+  try {
+    const groupAEvents = await RecommendationEvent.find({ group: 'A' }).populate('user').populate('recommendations');
+    const groupBEvents = await RecommendationEvent.find({ group: 'B' }).populate('user').populate('recommendations');
+    
+    const groupAEngagement = await calculateEngagement(groupAEvents);
+    const groupBEngagement = await calculateEngagement(groupBEvents);
+    
+    res.json({
+      groupA: groupAEngagement,
+      groupB: groupBEngagement
+    });
+  } catch (error) {
+    console.error('Error analyzing A/B test results:', error);
+    res.status(500).json({ message: 'Error analyzing A/B test results' });
   }
 });
 
@@ -381,52 +395,54 @@ async function assignTopicsToArticles(articles, topics) {
   }
 }
 
-async function getSimilarUsers(userId) {
-  const user = await User.findById(userId).populate('interactions');
-  const allUsers = await User.find({}).populate('interactions');
+async function generateRecommendations(user, interactions) {
+  // Implement your recommendation logic here
+  // This should be a combination of collaborative and content-based filtering
+  // For simplicity, we'll just return a random set of articles
+  const allArticles = await Article.find({});
+  return allArticles.sort(() => 0.5 - Math.random()).slice(0, 10);
+}
+
+async function generateRecommendationsA(user) {
+  // Implement your current recommendation algorithm here
+  // For simplicity, we'll just return a random set of articles
+  const allArticles = await Article.find({});
+  return allArticles.sort(() => 0.5 - Math.random()).slice(0, 10);
+}
+
+async function generateRecommendationsB(user) {
+  // Implement a slightly modified version of your recommendation algorithm here
+  // For this example, we'll just return articles sorted by publish date
+  return await Article.find({}).sort({ publishedAt: -1 }).limit(10);
+}
+
+async function logRecommendationEvent(userId, group, recommendationIds) {
+  const event = new RecommendationEvent({
+    user: userId,
+    group: group,
+    recommendations: recommendationIds
+  });
+  await event.save();
+}
+
+async function calculateEngagement(events) {
+  let totalClicks = 0;
+  let totalRecommendations = 0;
   
-  const similarityScores = allUsers.map(otherUser => {
-    if (otherUser._id.toString() === userId.toString()) return { user: otherUser, score: 0 };
-    
-    let commonInteractions = 0;
-    user.interactions.forEach(userInteraction => {
-      const otherUserInteraction = otherUser.interactions.find(
-        interaction => interaction.article.toString() === userInteraction.article.toString()
-      );
-      if (otherUserInteraction) {
-        commonInteractions += 1;
-        if (userInteraction.liked === otherUserInteraction.liked) {
-          commonInteractions += 0.5;
-        }
-      }
+  for (const event of events) {
+    totalRecommendations += event.recommendations.length;
+    const userInteractions = await Interaction.find({
+      user: event.user._id,
+      article: { $in: event.recommendations },
+      timestamp: { $gte: event.timestamp }
     });
-    
-    const similarityScore = commonInteractions / Math.max(user.interactions.length, otherUser.interactions.length);
-    return { user: otherUser, score: similarityScore };
-  });
+    totalClicks += userInteractions.length;
+  }
   
-  return similarityScores.sort((a, b) => b.score - a.score).slice(0, 5);
-}
-
-function calculateTfIdfVector(text, allDocuments) {
-  const tfidf = new TfIdf();
-  allDocuments.forEach(doc => tfidf.addDocument(doc));
-  tfidf.addDocument(text);
-  
-  const vector = {};
-  tfidf.listTerms(allDocuments.length).forEach(item => {
-    vector[item.term] = item.tfidf;
-  });
-  
-  return vector;
-}
-
-function cosineSimilarity(vec1, vec2) {
-  const intersection = Object.keys(vec1).filter(key => key in vec2);
-  const dotProduct = intersection.reduce((sum, key) => sum + vec1[key] * vec2[key], 0);
-  const mag1 = Math.sqrt(Object.values(vec1).reduce((sum, val) => sum + val * val, 0));
-  const mag2 = Math.sqrt(Object.values(vec2).reduce((sum, val) => sum + val * val, 0));
-  return dotProduct / (mag1 * mag2);
+  return {
+    clickThroughRate: totalClicks / totalRecommendations,
+    totalEvents: events.length
+  };
 }
 
 async function sendEmailDigest(user) {
@@ -467,6 +483,27 @@ cron.schedule('0 8 * * *', () => {
   sendDailyDigests();
 });
 
+
+app.post('/api/signup', async (req, res) => {
+    const start = performance.now();
+    try {
+      const { email, password } = req.body;
+      const existingUser = await User.findOne({ email });
+      if (existingUser) return res.status(400).json({ message: 'User already exists' });
+      
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const newUser = new User({ email, password: hashedPassword });
+      await newUser.save();
+      
+      res.status(201).json({ message: 'User registered successfully' });
+    } catch (error) {
+      Sentry.captureException(error);
+      res.status(500).json({ message: 'Error registering user' });
+    } finally {
+      const end = performance.now();
+      console.log(`Signup process took ${end - start} milliseconds`);
+    }
+  });
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
