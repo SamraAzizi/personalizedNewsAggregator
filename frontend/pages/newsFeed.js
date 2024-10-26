@@ -133,45 +133,4 @@ function NewsFeed() {
       <h2>Trending News</h2>
       <ArticleList articles={trendingArticles} />
       
-      <h2>Articles by Sentiment</h2>
-      <select value={selectedSentiment} onChange={handleSentimentChange}>
-        <option value="POSITIVE">Positive</option>
-        <option value="NEGATIVE">Negative</option>
-        <option value="NEUTRAL">Neutral</option>
-      </select>
-      {sentimentArticles.map((article, index) => (
-        <div key={index}>
-          <h3>{article.title}</h3>
-          <p>{article.description}</p>
-          <p>Source: {article.source}</p>
-          <p>Published: {new Date(article.publishedAt).toLocaleString()}</p>
-          <p>Sentiment: {article.sentiment}</p>
-          <button onClick={() => handleLike(article._id)}>Like</button>
-          <a href={article.url} target="_blank" rel="noopener noreferrer" onClick={() => handleReadMore(article._id)}>Read more</a>
-        </div>
-      ))}
-
-      <h2>Articles by Topic</h2>
-      <select value={selectedTopic} onChange={handleTopicChange}>
-        <option value="">Select a topic</option>
-        {topics.map((topic, index) => (
-          <option key={index} value={topic}>{topic}</option>
-        ))}
-      </select>
-      {topicArticles.map((article, index) => (
-        <div key={index}>
-          <h3>{article.title}</h3>
-          <p>{article.description}</p>
-          <p>Source: {article.source}</p>
-          <p>Published: {new Date(article.publishedAt).toLocaleString()}</p>
-          <p>Topics: {article.topics.map(t => t.topic).join(', ')}</p>
-          <button onClick={() => handleLike(article._id)}>Like</button>
-          <a href={article.url} target="_blank" rel="noopener noreferrer" onClick={() => handleReadMore(article._id)}>Read more</a>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-export default NewsFeed;
 
