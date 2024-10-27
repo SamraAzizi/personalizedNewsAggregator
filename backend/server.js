@@ -1,4 +1,16 @@
-
+const express = require('express');
+const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
+const bcrypt = require('bcrypt');
+const bodyParser = require('body-parser');
+const axios = require('axios');
+const natural = require('natural');
+const TfIdf = natural.TfIdf;
+const { HfInference } = require('@huggingface/inference');
+const lda = require('lda');
+const stopword = require('stopword');
+const sgMail = require('@sendgrid/mail');
+const cron = require('node-cron');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
