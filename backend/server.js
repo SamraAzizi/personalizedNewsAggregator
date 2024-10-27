@@ -40,6 +40,20 @@ const UserPreferenceSchema = new mongoose.Schema({
   sources: [String]
 });
 
+const ArticleSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  description: { type: String },
+  url: { type: String, required: true, unique: true },
+  urlToImage: { type: String },
+  publishedAt: { type: Date },
+  source: { type: String },
+  category: { type: String },
+  keyword: { type: String },
+  sentiment: { type: String },
+  topics: [{ topic: String, probability: Number }]
+});
+
+
 
 
 
