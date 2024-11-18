@@ -34,10 +34,4 @@ This is a Flask-based web application that aggregates news articles from various
 - pip (Python package manager)
 - A valid API key from [News API](https://newsapi.org/)
 
-### Installation
 
-1. Clone the repository:
-
-   ```bash
-   git clone https://github.com/yourusername/news-aggregator.git
-   cd news-aggregator
