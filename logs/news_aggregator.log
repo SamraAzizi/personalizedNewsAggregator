@@ -61,3 +61,5 @@
 2024-11-18 10:31:29,085 ERROR: Error initializing recommendation engine: np.nan is an invalid document, expected byte or unicode string. [in C:\Users\Mcm\Desktop\news\app.py:110]
 2024-11-18 10:32:27,036 ERROR: Recommendation error: 'list' object has no attribute 'to_dict' [in C:\Users\Mcm\Desktop\news\app.py:250]
 2024-11-18 10:32:42,394 ERROR: Recommendation error: 'list' object has no attribute 'to_dict' [in C:\Users\Mcm\Desktop\news\app.py:250]
+2024-11-18 10:38:47,757 INFO: News Aggregator startup [in C:\Users\Mcm\Desktop\news\app.py:41]
+2024-11-18 10:38:47,773 ERROR: Error initializing recommendation engine: np.nan is an invalid document, expected byte or unicode string. [in C:\Users\Mcm\Desktop\news\app.py:111]
