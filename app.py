@@ -2,33 +2,66 @@ from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity, create_access_token
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
+from datetime import datetime, timedelta
 import pandas as pd
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import os
-import logging
 from logging.handlers import RotatingFileHandler
+import logging
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
+from fetch_news import newsFetcher
+
+import requests
+from bs4 import BeautifulSoup
 
 # Load environment variables
 load_dotenv()
-
 
 app = Flask(__name__)
 CORS(app)
 
 # Configuration
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key')
-app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'your-jwt-secret')
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
+app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///news.db')
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = os.getenv('SQLALCHEMY_TRACK_MODIFICATIONS', 'False').lower() == 'true'
+
+# JWT Configuration
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=1)  # Token expires in 1 day
+app.config['JWT_REFRESH_TOKEN_EXPIRES'] = timedelta(days=30)  # Refresh token expires in 30 days
+app.config['JWT_ERROR_MESSAGE_KEY'] = 'error'
+app.config['JWT_TOKEN_LOCATION'] = ['headers']
+app.config['JWT_HEADER_NAME'] = 'Authorization'
+app.config['JWT_HEADER_TYPE'] = 'Bearer'
 
 # Initialize extensions
 db = SQLAlchemy(app)
 jwt = JWTManager(app)
+
+# JWT error handlers
+@jwt.invalid_token_loader
+def invalid_token_callback(error):
+    return jsonify({
+        'error': 'Invalid token',
+        'message': 'The token provided is invalid'
+    }), 422
+
+@jwt.unauthorized_loader
+def unauthorized_callback(error):
+    return jsonify({
+        'error': 'No token provided',
+        'message': 'No authorization token was provided'
+    }), 401
+
+@jwt.expired_token_loader
+def expired_token_callback(jwt_header, jwt_data):
+    return jsonify({
+        'error': 'Token expired',
+        'message': 'The token has expired'
+    }), 401
 
 # Setup logging
 if not os.path.exists('logs'):
@@ -39,6 +72,15 @@ file_handler.setLevel(logging.INFO)
 app.logger.addHandler(file_handler)
 app.logger.setLevel(logging.INFO)
 app.logger.info('News Aggregator startup')
+
+# Security Headers
+@app.after_request
+def add_security_headers(response):
+    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    return response
 
 # Database Models
 class User(db.Model):
@@ -80,6 +122,8 @@ class RecommendationEngine:
         self.articles = None
 
     def train(self, articles_df):
+        # Check for NaN values and drop them
+        articles_df = articles_df.dropna(subset=['content', 'topic'])
         self.articles = articles_df
         content_features = self.vectorizer.fit_transform(articles_df['content'])
         self.content_matrix = content_features
@@ -100,37 +144,31 @@ class RecommendationEngine:
         
         return self.articles.iloc[top_indices]
 
+# Initialize the global recommender instance
 recommender = RecommendationEngine()
 
 def initialize_recommender():
     try:
+        # Load the news data
         df = pd.read_csv('processed_news.csv')
+        # Clean the data
+        df = df.dropna(subset=['content', 'topic'])
+        # Train the recommender
         recommender.train(df)
-        app.logger.info('Recommendation engine initialized successfully')
+        app.logger.info('Recommender initialized successfully')
     except Exception as e:
-        app.logger.error(f'Error initializing recommendation engine: {str(e)}')
+        app.logger.error(f'Error initializing recommender: {str(e)}')
+        raise
 
-# API Routes
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-@app.route('/saved')
-@jwt_required()
-def saved_articles():
-    return render_template('saved_articles.html')
-
-@app.route('/recommendations')
-@jwt_required()
-def recommendations():
-    return render_template('recommendations.html')
-
+# API Route for /api/auth/login
 @app.route('/api/auth/login', methods=['POST'])
 def login():
     try:
         data = request.get_json()
+        if not data or 'email' not in data or 'password' not in data:
+            return jsonify({'error': 'Missing email or password'}), 400
+
         user = User.query.filter_by(email=data['email']).first()
-        
         if user and user.check_password(data['password']):
             access_token = create_access_token(identity=user.id)
             return jsonify({
@@ -139,10 +177,10 @@ def login():
                     'id': user.id,
                     'username': user.username,
                     'email': user.email,
-                    'preferences': user.preferences
+                    'preferences': user.preferences or []
                 }
             }), 200
-        return jsonify({'error': 'Invalid credentials'}), 401
+        return jsonify({'error': 'Invalid email or password'}), 401
     except Exception as e:
         app.logger.error(f'Login error: {str(e)}')
         return jsonify({'error': 'Login failed'}), 500
@@ -192,7 +230,14 @@ def update_preferences():
             return jsonify({'error': 'User not found'}), 404
 
         data = request.get_json()
-        user.preferences = data.get('preferences', [])
+        if not data or 'preferences' not in data:
+            return jsonify({'error': 'No preferences provided'}), 400
+
+        preferences = data.get('preferences', [])
+        if not isinstance(preferences, list):
+            return jsonify({'error': 'Preferences must be a list'}), 400
+
+        user.preferences = preferences
         db.session.commit()
 
         return jsonify({
@@ -205,53 +250,124 @@ def update_preferences():
         return jsonify({'error': 'Failed to update preferences'}), 500
 
 @app.route('/api/recommend', methods=['POST'])
-def recommend_api():
+def recommend_news():
     try:
-        data = request.get_json()
-        if not data:
-            return jsonify({'error': 'No data provided'}), 400
+        token = None
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.split(' ')[1]
 
+        current_user = None
+        if token:
+            try:
+                user_id = get_jwt_identity()
+                current_user = User.query.get(user_id)
+            except:
+                # Token invalid or expired, but continue with default recommendations
+                pass
+
+        data = request.get_json() or {}
         preferences = data.get('preferences', [])
+        
+        # If user is logged in, merge their stored preferences with current selection
+        if current_user and current_user.preferences:
+            preferences = list(set(preferences + current_user.preferences))
+        
+        # If no preferences, use default categories
         if not preferences:
-            return jsonify({'error': 'No preferences provided'}), 400
+            preferences = ['technology', 'general', 'business']
 
-        # Load news data
+        # Initialize news fetcher with error handling
         try:
-            df = pd.read_csv('processed_news.csv')
+            news_fetcher = NewsFetcher()
+            articles = news_fetcher.fetch_news(preferences)
+            
+            # Ensure articles is a list and has required fields
+            if not isinstance(articles, list):
+                articles = []
+            
+            # Format articles to ensure all required fields exist
+            formatted_articles = []
+            for article in articles:
+                formatted_article = {
+                    'title': article.get('title', ''),
+                    'description': article.get('description', ''),
+                    'url': article.get('url', ''),
+                    'urlToImage': article.get('urlToImage', ''),
+                    'publishedAt': article.get('publishedAt', ''),
+                    'source': article.get('source', {}).get('name', ''),
+                    'category': article.get('category', 'general')
+                }
+                formatted_articles.append(formatted_article)
+            
+            return jsonify({
+                'articles': formatted_articles,
+                'preferences': preferences
+            }), 200
+            
         except Exception as e:
-            app.logger.error(f'Error loading news data: {str(e)}')
-            return jsonify({'error': 'Could not load news data'}), 500
-
-        # Get recommendations
-        recommended_articles = recommender.get_recommendations(preferences)
-        
-        # Convert to dictionary format
-        articles = recommended_articles.to_dict('records')
-        
-        # Format the response
-        formatted_articles = []
-        for article in articles:
-            formatted_articles.append({
-                'id': str(article.get('id', '')),
-                'title': article.get('title', ''),
-                'description': article.get('content', '')[:200] + '...' if article.get('content') else '',
-                'url': article.get('url', ''),
-                'urlToImage': article.get('image_url', ''),
-                'publishedAt': article.get('published_at', ''),
-                'source': article.get('source', ''),
-                'category': article.get('topic', ''),
-                'sentiment': article.get('sentiment', 0)
-            })
-
-        return jsonify({
-            'articles': formatted_articles
-        }), 200
-
+            app.logger.error(f'News fetcher error: {str(e)}')
+            return jsonify({
+                'articles': [],
+                'preferences': preferences,
+                'error': 'Failed to fetch news'
+            }), 200  # Return 200 with empty articles instead of 500
+            
     except Exception as e:
-        app.logger.error(f'Recommendation error: {str(e)}')
-        return jsonify({'error': 'Failed to get recommendations'}), 500
+        app.logger.error(f'Error in news recommendation: {str(e)}')
+        return jsonify({
+            'error': 'Failed to fetch news',
+            'message': str(e)
+        }), 500
 
-# Run the app
+@app.route('/api/auth/check', methods=['GET'])
+@jwt_required(optional=True)
+def check_auth():
+    try:
+        current_user_id = get_jwt_identity()
+        if current_user_id:
+            user = User.query.get(current_user_id)
+            if user:
+                return jsonify({
+                    'authenticated': True,
+                    'user': {
+                        'id': user.id,
+                        'username': user.username,
+                        'email': user.email,
+                        'preferences': user.preferences or []
+                    }
+                }), 200
+        return jsonify({'authenticated': False}), 200
+    except Exception as e:
+        return jsonify({'authenticated': False, 'error': str(e)}), 401
+
+# Route for the home page
+@app.route('/')
+def index():
+    def get_news():
+        try:
+            # Read the CSV file
+            df = pd.read_csv('processed_news.csv')
+            
+            # Convert DataFrame to list of dictionaries
+            articles = df[['title', 'description', 'url', 'category']].to_dict('records')
+            
+            # Group articles by category
+            categorized_articles = {}
+            for article in articles:
+                category = article['category']
+                if category not in categorized_articles:
+                    categorized_articles[category] = []
+                categorized_articles[category].append(article)
+            
+            return categorized_articles
+        except Exception as e:
+            print(f"Error reading news data: {e}")
+            return {}
+    
+    news_articles = get_news()
+    return render_template('index.html', categorized_news=news_articles)
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()

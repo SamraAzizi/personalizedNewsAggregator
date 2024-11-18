@@ -1,232 +1,221 @@
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="light">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Personalized News Aggregator</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+    <title>News Aggregator</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         :root {
+            --primary-color: #007bff;
+            --hover-color: #0056b3;
+            --bg-light: #f8f9fa;
+            --shadow-sm: 0 2px 4px rgba(0,0,0,0.1);
+            --shadow-md: 0 4px 8px rgba(0,0,0,0.2);
             --transition-speed: 0.3s;
         }
-
+    
         body {
-            transition: background-color var(--transition-speed), color var(--transition-speed);
+            background-color: var(--bg-light);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
         }
-
-        .theme-toggle {
-            cursor: pointer;
-            padding: 0.5rem;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background-color var(--transition-speed);
-        }
-
-        .theme-toggle:hover {
-            background-color: rgba(255, 255, 255, 0.1);
-        }
-
-        .category-chip {
-            display: inline-block;
-            padding: 0.5rem 1.2rem;
-            margin: 0.35rem;
-            border-radius: 25px;
-            background-color: var(--bs-gray-200);
-            cursor: pointer;
-            transition: all var(--transition-speed);
-            font-weight: 500;
-            border: 2px solid transparent;
-        }
-        
-        .category-chip:hover {
-            background-color: var(--bs-gray-300);
-            transform: translateY(-2px);
-        }
-        
-        .category-chip.selected {
-            background-color: var(--bs-primary);
-            color: white;
-            border-color: var(--bs-primary);
-        }
-
-        .news-card {
-            transition: all var(--transition-speed);
-            margin-bottom: 1.5rem;
-            border: none;
-            border-radius: 15px;
-            overflow: hidden;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-
-        .news-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
-        }
-
-        .news-card .card-img-top {
-            height: 200px;
-            object-fit: cover;
-        }
-
-        .news-card .card-body {
-            padding: 1.5rem;
-        }
-
-        .sentiment-badge {
-            padding: 0.4rem 0.8rem;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 500;
-        }
-
-        .sentiment-positive {
-            background-color: var(--bs-success-bg-subtle);
-            color: var(--bs-success);
-        }
-
-        .sentiment-negative {
-            background-color: var(--bs-danger-bg-subtle);
-            color: var(--bs-danger);
-        }
-
-        .sentiment-neutral {
-            background-color: var(--bs-gray-200);
-            color: var(--bs-gray-700);
-        }
-
-        .loading-spinner {
-            display: none;
-            width: 3rem;
-            height: 3rem;
-        }
-
+    
         .navbar {
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-sm);
             padding: 1rem 0;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            background: linear-gradient(135deg, var(--primary-color), var(--hover-color));
         }
-
+    
         .navbar-brand {
             font-size: 1.5rem;
             font-weight: 600;
+            letter-spacing: 0.5px;
         }
-
-        .form-control, .btn {
-            border-radius: 10px;
+    
+        .nav-link {
+            font-weight: 500;
+            transition: var(--transition-speed);
         }
-
+    
+        .nav-link:hover {
+            transform: translateY(-2px);
+        }
+    
+        .category-title {
+            text-transform: capitalize;
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 0.5rem;
+            margin-bottom: 1.5rem;
+            font-weight: 600;
+            color: #2c3e50;
+            position: relative;
+        }
+    
+        .category-title::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 50px;
+            height: 2px;
+            background-color: var(--hover-color);
+        }
+    
+        .card {
+            border: none;
+            box-shadow: var(--shadow-sm);
+            transition: all var(--transition-speed);
+            margin-bottom: 20px;
+            border-radius: 12px;
+            overflow: hidden;
+            background: white;
+        }
+    
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-md);
+        }
+    
+        .card-body {
+            padding: 1.5rem;
+        }
+    
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #2c3e50;
+            line-height: 1.4;
+        }
+    
+        .card-text {
+            font-size: 0.9rem;
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 1.2rem;
+        }
+    
+        .btn-outline-primary {
+            border-radius: 20px;
+            padding: 0.4rem 1.2rem;
+            font-weight: 500;
+            transition: all var(--transition-speed);
+            border-width: 2px;
+        }
+    
+        .btn-outline-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 2px 4px rgba(0,123,255,0.3);
+        }
+    
+        .alert {
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border: none;
+            box-shadow: var(--shadow-sm);
+        }
+    
         .modal-content {
-            border-radius: 15px;
+            border-radius: 12px;
             border: none;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            box-shadow: var(--shadow-md);
         }
-
-        .error-alert {
-            border-radius: 10px;
-            border: none;
+    
+        .modal-header {
+            background-color: var(--bg-light);
+            border-bottom: 1px solid #eee;
         }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+    
+        .modal-title {
+            font-weight: 600;
+            color: #2c3e50;
         }
-
-        .fade-in {
-            animation: fadeIn 0.5s ease forwards;
+    
+        .form-label {
+            font-weight: 500;
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+        }
+    
+        .form-control {
+            border-radius: 8px;
+            padding: 0.6rem 1rem;
+            border: 2px solid #eee;
+            transition: var(--transition-speed);
+        }
+    
+        .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.15);
+        }
+    
+        #alertContainer {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1050;
+            max-width: 350px;
+        }
+    
+        .container {
+            max-width: 1200px;
+            padding: 0 20px;
+        }
+    
+        @media (max-width: 768px) {
+            .card-title {
+                font-size: 1rem;
+            }
+            .card-text {
+                font-size: 0.85rem;
+            }
+            .container {
+                padding: 0 15px;
+            }
         }
     </style>
 </head>
-<body>
-    <nav class="navbar navbar-expand-lg">
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
-            <a class="navbar-brand" href="/">
-                <i class="bi bi-newspaper me-2"></i>News Aggregator
-            </a>
-            <div class="d-flex align-items-center">
-                <div class="theme-toggle me-3" onclick="toggleTheme()">
-                    <i class="bi bi-moon-fill"></i>
-                </div>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-            </div>
+            <span class="navbar-brand mb-0 h1">News Aggregator</span>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
+                <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="#" id="savedArticles">Saved Articles</a>
+                        <a class="nav-link" href="#" id="loginBtn">Login</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#" id="preferences">Preferences</a>
+                        <a class="nav-link" href="#" id="signupBtn">Sign Up</a>
                     </li>
                 </ul>
-                <div class="d-flex" id="authButtons">
-                    <button class="btn btn-outline-primary me-2" id="loginBtn">Login</button>
-                    <button class="btn btn-primary" id="signupBtn">Sign Up</button>
-                </div>
             </div>
         </div>
     </nav>
 
-    <div class="container mt-4">
-        <div class="row">
-            <div class="col-md-8">
-                <h1 class="mb-4">Personalized News</h1>
-                <div class="error-message" id="errorMessage"></div>
-                
-                <div class="card mb-4">
-                    <div class="card-body">
-                        <h5 class="card-title">Select Your Interests</h5>
-                        <div id="categoryChips" class="mb-3">
-                            <span class="category-chip" data-category="technology">Technology</span>
-                            <span class="category-chip" data-category="business">Business</span>
-                            <span class="category-chip" data-category="sports">Sports</span>
-                            <span class="category-chip" data-category="entertainment">Entertainment</span>
-                            <span class="category-chip" data-category="science">Science</span>
-                            <span class="category-chip" data-category="health">Health</span>
+    <div class="container">
+        <div id="alertContainer"></div>
+        {% for category, articles in categorized_news.items() %}
+        <section class="mb-5">
+            <h2 class="category-title">{{ category }}</h2>
+            <div class="row">
+                {% for article in articles[:6] %}
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ article.title }}</h5>
+                            <p class="card-text">{{ article.description }}</p>
+                            <a href="{{ article.url }}" class="btn btn-sm btn-outline-primary" target="_blank">Read More</a>
                         </div>
-                        <button class="btn btn-primary" id="updatePreferences">Update Preferences</button>
                     </div>
                 </div>
-
-                <div class="loading-spinner" id="loadingSpinner">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                </div>
-
-                <div id="newsContainer"></div>
+                {% endfor %}
             </div>
-
-            <div class="col-md-4">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Quick Filters</h5>
-                        <div class="mb-3">
-                            <label class="form-label">Sentiment</label>
-                            <select class="form-select" id="sentimentFilter">
-                                <option value="">All</option>
-                                <option value="positive">Positive</option>
-                                <option value="negative">Negative</option>
-                                <option value="neutral">Neutral</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Sort By</label>
-                            <select class="form-select" id="sortBy">
-                                <option value="date">Date</option>
-                                <option value="relevance">Relevance</option>
-                                <option value="sentiment">Sentiment</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        </section>
+        {% endfor %}
     </div>
 
     <!-- Login Modal -->
@@ -241,11 +230,11 @@
                     <form id="loginForm">
                         <div class="mb-3">
                             <label class="form-label">Email</label>
-                            <input type="email" class="form-control" required>
+                            <input type="email" name="email" class="form-control" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Password</label>
-                            <input type="password" class="form-control" required>
+                            <input type="password" name="password" class="form-control" required>
                         </div>
                         <button type="submit" class="btn btn-primary">Login</button>
                     </form>
@@ -287,298 +276,94 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Initialize variables
-        let selectedCategories = new Set();
-        let currentUser = null;
-
-        // Event Listeners
-        document.addEventListener('DOMContentLoaded', () => {
-            // Category chip selection
-            document.querySelectorAll('.category-chip').forEach(chip => {
-                chip.addEventListener('click', () => {
-                    chip.classList.toggle('selected');
-                    const category = chip.dataset.category;
-                    if (selectedCategories.has(category)) {
-                        selectedCategories.delete(category);
-                    } else {
-                        selectedCategories.add(category);
-                    }
-                });
-            });
-
-            // Update preferences
-            document.getElementById('updatePreferences').addEventListener('click', updatePreferences);
-
-            // Filters
-            document.getElementById('sentimentFilter').addEventListener('change', applyFilters);
-            document.getElementById('sortBy').addEventListener('change', applyFilters);
-
-            // Auth buttons
-            document.getElementById('loginBtn').addEventListener('click', () => {
-                new bootstrap.Modal(document.getElementById('loginModal')).show();
-            });
-
-            document.getElementById('signupBtn').addEventListener('click', () => {
-                new bootstrap.Modal(document.getElementById('signupModal')).show();
-            });
-
-            // Signup form submission
-            document.getElementById('signupForm').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const formData = new FormData(e.target);
-                const password = formData.get('password');
-                const confirmPassword = formData.get('confirmPassword');
-
-                if (password !== confirmPassword) {
-                    showError('Passwords do not match');
-                    return;
-                }
-
-                try {
-                    const response = await fetch('/api/auth/register', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            username: formData.get('username'),
-                            email: formData.get('email'),
-                            password: password,
-                            preferences: []
-                        })
-                    });
-                    
-                    const data = await response.json();
-                    if (response.ok) {
-                        localStorage.setItem('token', data.access_token);
-                        currentUser = data.user;
-                        bootstrap.Modal.getInstance(document.getElementById('signupModal')).hide();
-                        showSuccess('Account created successfully! Welcome to News Aggregator.');
-                        loadNews();
-                    } else {
-                        showError(data.error || 'Registration failed');
-                    }
-                } catch (error) {
-                    showError('Registration failed. Please try again.');
-                }
-            });
-
-            // Login form submission
-            document.getElementById('loginForm').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const email = e.target.querySelector('input[type="email"]').value;
-                const password = e.target.querySelector('input[type="password"]').value;
-                
-                try {
-                    const response = await fetch('/api/auth/login', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ email, password })
-                    });
-                    
-                    const data = await response.json();
-                    if (response.ok) {
-                        localStorage.setItem('token', data.access_token);
-                        currentUser = data.user;
-                        bootstrap.Modal.getInstance(document.getElementById('loginModal')).hide();
-                        loadNews();
-                    } else {
-                        showError(data.error);
-                    }
-                } catch (error) {
-                    showError('Login failed. Please try again.');
-                }
-            });
-
-            // Initial load
-            loadNews();
-
-            // Load saved theme preference
-            const savedTheme = localStorage.getItem('theme') || 'light';
-            document.documentElement.setAttribute('data-bs-theme', savedTheme);
-            const themeToggle = document.querySelector('.theme-toggle i');
-            if (savedTheme === 'dark') {
-                themeToggle.classList.remove('bi-moon-fill');
-                themeToggle.classList.add('bi-sun-fill');
-            }
+        // Show login modal
+        document.getElementById('loginBtn').addEventListener('click', () => {
+            new bootstrap.Modal(document.getElementById('loginModal')).show();
         });
 
-        async function updatePreferences() {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                showError('Please login first to save your preferences');
-                new bootstrap.Modal(document.getElementById('loginModal')).show();
-                return;
-            }
+        // Show signup modal
+        document.getElementById('signupBtn').addEventListener('click', () => {
+            new bootstrap.Modal(document.getElementById('signupModal')).show();
+        });
 
+        // Handle login form submission
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
             try {
-                showLoading(true);
-                const response = await fetch('/api/user/preferences', {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({
-                        preferences: Array.from(selectedCategories)
-                    })
-                });
-
-                if (!response.ok) {
-                    if (response.status === 401) {
-                        localStorage.removeItem('token');
-                        showError('Session expired. Please login again');
-                        new bootstrap.Modal(document.getElementById('loginModal')).show();
-                        return;
-                    }
-                    throw new Error('Failed to update preferences');
-                }
-                
-                showSuccess('Preferences updated successfully!');
-                loadNews();
-            } catch (error) {
-                showError(error.message);
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        async function loadNews() {
-            try {
-                showLoading(true);
-                const token = localStorage.getItem('token');
-                const response = await fetch('/api/recommend', {
+                const response = await fetch('/login', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': token ? `Bearer ${token}` : ''
                     },
                     body: JSON.stringify({
-                        preferences: Array.from(selectedCategories)
+                        email: formData.get('email'),
+                        password: formData.get('password')
                     })
                 });
-
-                if (!response.ok) {
-                    throw new Error('Failed to fetch news');
+                
+                if (response.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById('loginModal')).hide();
+                    showAlert('Logged in successfully!', 'success');
+                    location.reload();
+                } else {
+                    showAlert('Login failed. Please check your credentials.', 'danger');
                 }
-
-                const data = await response.json();
-                displayNews(data.articles);
             } catch (error) {
-                showError(error.message);
-            } finally {
-                showLoading(false);
+                showAlert('An error occurred. Please try again.', 'danger');
             }
-        }
+        });
 
-        function displayNews(articles) {
-            const newsContainer = document.getElementById('newsContainer');
-            newsContainer.innerHTML = '';
-            
-            if (!articles || articles.length === 0) {
-                newsContainer.innerHTML = `
-                    <div class="alert alert-info">
-                        No articles found. Try selecting different categories.
-                    </div>
-                `;
+        // Handle signup form submission
+        document.getElementById('signupForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const password = formData.get('password');
+            const confirmPassword = formData.get('confirmPassword');
+
+            if (password !== confirmPassword) {
+                showAlert('Passwords do not match!', 'danger');
                 return;
             }
-            
-            articles.forEach((article, index) => {
-                const card = document.createElement('div');
-                card.className = 'col-md-6 col-lg-4 fade-in';
-                card.style.animationDelay = `${index * 0.1}s`;
-                
-                const sentimentClass = getSentimentClass(article.sentiment);
-                const sentimentEmoji = getSentimentEmoji(article.sentiment);
-                
-                card.innerHTML = `
-                    <div class="news-card card h-100">
-                        <img src="${article.urlToImage || '/static/placeholder.jpg'}" class="card-img-top" alt="${article.title}" onerror="this.src='/static/placeholder.jpg'">
-                        <div class="card-body d-flex flex-column">
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <span class="sentiment-badge ${sentimentClass}">${sentimentEmoji} ${article.category.toUpperCase()}</span>
-                                <small class="text-muted">${new Date(article.publishedAt).toLocaleDateString()}</small>
-                            </div>
-                            <h5 class="card-title mb-3">${article.title}</h5>
-                            <p class="card-text flex-grow-1">${article.description || ''}</p>
-                            <div class="d-flex justify-content-between align-items-center mt-3">
-                                <a href="${article.url}" class="btn btn-primary" target="_blank">Read More</a>
-                                <button class="btn btn-outline-primary" onclick="saveArticle('${article.id}')">
-                                    <i class="bi bi-bookmark"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                
-                newsContainer.appendChild(card);
-            });
-        }
 
-        function showLoading(show) {
-            document.getElementById('loadingSpinner').style.display = show ? 'block' : 'none';
-        }
+            try {
+                const response = await fetch('/signup', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: formData.get('username'),
+                        email: formData.get('email'),
+                        password: password
+                    })
+                });
+                
+                if (response.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById('signupModal')).hide();
+                    showAlert('Account created successfully!', 'success');
+                    location.reload();
+                } else {
+                    showAlert('Registration failed. Please try again.', 'danger');
+                }
+            } catch (error) {
+                showAlert('An error occurred. Please try again.', 'danger');
+            }
+        });
 
-        function showError(message) {
-            const errorElement = document.getElementById('errorMessage');
-            errorElement.textContent = message;
-            errorElement.style.display = 'block';
-            setTimeout(() => {
-                errorElement.style.display = 'none';
-            }, 5000);
-        }
-
-        function showSuccess(message) {
-            const successElement = document.createElement('div');
-            successElement.className = 'alert alert-success alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3';
-            successElement.style.zIndex = '1050';
-            successElement.innerHTML = `
+        // Helper function to show alerts
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type} alert-dismissible fade show`;
+            alert.innerHTML = `
                 ${message}
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             `;
-            document.body.appendChild(successElement);
-            setTimeout(() => {
-                successElement.remove();
-            }, 5000);
-        }
-
-        function getSentimentClass(sentiment) {
-            if (sentiment > 0.2) return 'sentiment-positive';
-            if (sentiment < -0.2) return 'sentiment-negative';
-            return 'sentiment-neutral';
-        }
-
-        function getSentimentEmoji(sentiment) {
-            if (sentiment > 0.2) return '😊';
-            if (sentiment < -0.2) return '😞';
-            return '😐';
-        }
-
-        function applyFilters() {
-            loadNews();
-        }
-
-        function toggleTheme() {
-            const html = document.documentElement;
-            const themeToggle = document.querySelector('.theme-toggle i');
-            
-            if (html.getAttribute('data-bs-theme') === 'dark') {
-                html.setAttribute('data-bs-theme', 'light');
-                themeToggle.classList.remove('bi-sun-fill');
-                themeToggle.classList.add('bi-moon-fill');
-                localStorage.setItem('theme', 'light');
-            } else {
-                html.setAttribute('data-bs-theme', 'dark');
-                themeToggle.classList.remove('bi-moon-fill');
-                themeToggle.classList.add('bi-sun-fill');
-                localStorage.setItem('theme', 'dark');
-            }
+            alertContainer.appendChild(alert);
+            setTimeout(() => alert.remove(), 5000);
         }
     </script>
 </body>
