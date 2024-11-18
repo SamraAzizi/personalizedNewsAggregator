@@ -1,7 +1,5 @@
 
-# News Aggregator Application
 
-## Overview
 
 This is a Flask-based web application that aggregates news articles from various categories and provides personalized news recommendations to users. The application uses JWT for authentication, SQLAlchemy for database management, and incorporates machine learning techniques for recommending articles based on user preferences.
 
