@@ -1,9 +1,12 @@
-
-
+# News Aggregator Application
+-----------------------------
+## Overview
+--------------
 
 This is a Flask-based web application that aggregates news articles from various categories and provides personalized news recommendations to users. The application uses JWT for authentication, SQLAlchemy for database management, and incorporates machine learning techniques for recommending articles based on user preferences.
 
 ## Features
+------------
 
 - **User  Authentication**: Register and log in using email and password.
 - **Personalized News Recommendations**: Users can set preferences for news categories, and the application will recommend articles based on these preferences.
@@ -12,7 +15,7 @@ This is a Flask-based web application that aggregates news articles from various
 - **Frontend**: A simple web interface to display news articles.
 
 ## Technologies Used
-
+-----------------------
 - **Flask**: Web framework for building the application.
 - **Flask-CORS**: For handling Cross-Origin Resource Sharing.
 - **Flask-JWT-Extended**: For JWT authentication.
@@ -25,6 +28,7 @@ This is a Flask-based web application that aggregates news articles from various
 - **HTML/CSS**: For the frontend template.
 
 ## Setup Instructions
+----------------------
 
 ### Prerequisites
 
@@ -33,7 +37,7 @@ This is a Flask-based web application that aggregates news articles from various
 - A valid API key from [News API](https://newsapi.org/)
 
 ## Usage
-
+------------
 1. **User  Registration and Login**:
    - Users can register for an account by providing their email and password.
    - After registration, users can log in using their credentials.
